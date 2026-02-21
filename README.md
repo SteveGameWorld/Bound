@@ -33,6 +33,24 @@ python3 -m http.server 5180
 
 > 注意：不要直接用 `file://` 打開 `index.html`，瀏覽器會阻擋 ES Module 載入。
 
+## 2.5) 發佈到 GitHub Pages
+
+本專案是純靜態網站（`index.html` + `main.js` + `style.css` + `assets/`），適合直接用 GitHub Pages 發佈。
+
+1) 到 GitHub repo → **Settings** → **Pages**
+
+2) **Build and deployment**
+
+- **Source** 選 `Deploy from a branch`
+- **Branch** 選 `main`
+- **Folder** 選 `/ (root)`
+
+3) 等待部署完成後，就可以用 GitHub Pages 網址打開（大概格式會是）：
+
+- `https://<owner>.github.io/<repo>/`
+
+> 已放入 `.nojekyll`，避免 GitHub Pages 的 Jekyll 忽略底線開頭資料夾造成資源缺檔。
+
 ## 3) 操作
 
 - 移動：W A S D
