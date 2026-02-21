@@ -89,6 +89,14 @@ const ui = {
   p2pCopyOffer: $("p2pCopyOffer"),
   p2pMakeAnswer: $("p2pMakeAnswer"),
   p2pApplyAnswer: $("p2pApplyAnswer"),
+  touchControls: $("touchControls"),
+  touchMove: $("touchMove"),
+  touchStick: $("touchStick"),
+  touchLook: $("touchLook"),
+  touchJump: $("touchJump"),
+  touchAction: $("touchAction"),
+  touchPlace: $("touchPlace"),
+  touchMenu: $("touchMenu"),
 };
 
 function setBootMsg(t) {
@@ -3221,12 +3229,40 @@ async function bootstrap() {
       triggerShoot: false,
       shootCd: 0,
       shootPulse: 0,
+      touch: {
+        enabled: false,
+        // move stick (-1..1)
+        mx: 0,
+        my: 0,
+        movePid: null,
+        stickCx: 0,
+        stickCy: 0,
+        // look pad
+        lookPid: null,
+        lookLastX: 0,
+        lookLastY: 0,
+        // buttons
+        jump: false,
+      },
       dragLook: false, // 沒有 pointer lock 時，按住右鍵拖曳轉視角
       lastMouseX: 0,
       lastMouseY: 0,
       catalogTab: "all",
       emote: null,
       emoteT: 0,
+    };
+
+    const applyLookDelta = (dx, dy) => {
+      const sens = 0.0023;
+      if (profile.camMode === "third") {
+        state.camYaw -= dx * sens;
+        state.camPitch -= dy * sens;
+        state.camPitch = clamp(state.camPitch, -1.15, 1.15);
+      } else {
+        state.yaw -= dx * sens;
+        state.pitch -= dy * sens;
+        state.pitch = clamp(state.pitch, -1.15, 1.15);
+      }
     };
 
     // --- simple weapon model (visible gun / axe) ---
@@ -4186,6 +4222,10 @@ async function bootstrap() {
       if (state.keys.has("KeyS")) mv.addScaledVector(forward, -1);
       if (state.keys.has("KeyA")) mv.addScaledVector(right, -1);
       if (state.keys.has("KeyD")) mv.add(right);
+      if (state.touch.enabled && (state.touch.mx || state.touch.my)) {
+        mv.addScaledVector(right, state.touch.mx);
+        mv.addScaledVector(forward, state.touch.my);
+      }
       if (mv.lengthSq() > 0) mv.normalize().multiplyScalar(MOVE_SPEED);
 
       state.vel.x = mv.x;
@@ -4220,6 +4260,14 @@ async function bootstrap() {
         state.onGround = false;
         sfx.play("jump");
         }
+      }
+      if (state.touch.enabled && state.touch.jump && state.onGround) {
+        if (!(profile.gameMode === "gunfight" && mode.gunfight.phase !== "live")) {
+          state.vel.y = JUMP_V;
+          state.onGround = false;
+          sfx.play("jump");
+        }
+        state.touch.jump = false;
       }
 
       state.vel.y += GRAVITY * dt;
@@ -5569,6 +5617,149 @@ async function bootstrap() {
       sfx.play("click");
     });
 
+    // Touch controls (tablet/mobile)
+    const isCoarse = () => {
+      try {
+        return (
+          (globalThis.matchMedia && matchMedia("(hover: none) and (pointer: coarse)").matches) ||
+          "ontouchstart" in window ||
+          navigator.maxTouchPoints > 0
+        );
+      } catch {
+        return false;
+      }
+    };
+    state.touch.enabled = !!ui.touchControls && isCoarse();
+    if (state.touch.enabled) {
+      document.body.classList.add("touch-on");
+    }
+
+    const setStick = (dx, dy) => {
+      const maxR = 46;
+      const len = Math.hypot(dx, dy) || 0;
+      const k = len > maxR ? maxR / len : 1;
+      const sx = dx * k;
+      const sy = dy * k;
+      if (ui.touchStick) ui.touchStick.style.transform = `translate(calc(-50% + ${sx}px), calc(-50% + ${sy}px))`;
+      // normalized move (-1..1), y is forward (up on stick = +forward)
+      state.touch.mx = clamp(sx / maxR, -1, 1);
+      state.touch.my = clamp(-sy / maxR, -1, 1);
+    };
+    const resetStick = () => {
+      state.touch.mx = 0;
+      state.touch.my = 0;
+      if (ui.touchStick) ui.touchStick.style.transform = "translate(-50%, -50%)";
+    };
+
+    ui.touchMove?.addEventListener("pointerdown", (e) => {
+      if (!state.touch.enabled) return;
+      state.touch.movePid = e.pointerId;
+      ui.touchMove?.setPointerCapture?.(e.pointerId);
+      const r = ui.touchMove.getBoundingClientRect();
+      state.touch.stickCx = r.left + r.width / 2;
+      state.touch.stickCy = r.top + r.height / 2;
+      setStick(e.clientX - state.touch.stickCx, e.clientY - state.touch.stickCy);
+      e.preventDefault();
+    });
+    ui.touchMove?.addEventListener("pointermove", (e) => {
+      if (!state.touch.enabled) return;
+      if (state.touch.movePid !== e.pointerId) return;
+      setStick(e.clientX - state.touch.stickCx, e.clientY - state.touch.stickCy);
+      e.preventDefault();
+    });
+    ui.touchMove?.addEventListener("pointerup", (e) => {
+      if (state.touch.movePid !== e.pointerId) return;
+      state.touch.movePid = null;
+      resetStick();
+      e.preventDefault();
+    });
+    ui.touchMove?.addEventListener("pointercancel", () => {
+      state.touch.movePid = null;
+      resetStick();
+    });
+
+    ui.touchLook?.addEventListener("pointerdown", (e) => {
+      if (!state.touch.enabled) return;
+      state.touch.lookPid = e.pointerId;
+      ui.touchLook?.setPointerCapture?.(e.pointerId);
+      state.touch.lookLastX = e.clientX;
+      state.touch.lookLastY = e.clientY;
+      e.preventDefault();
+    });
+    ui.touchLook?.addEventListener("pointermove", (e) => {
+      if (!state.touch.enabled) return;
+      if (state.touch.lookPid !== e.pointerId) return;
+      const dx = e.clientX - state.touch.lookLastX;
+      const dy = e.clientY - state.touch.lookLastY;
+      state.touch.lookLastX = e.clientX;
+      state.touch.lookLastY = e.clientY;
+      applyLookDelta(dx, dy);
+      e.preventDefault();
+    });
+    ui.touchLook?.addEventListener("pointerup", (e) => {
+      if (state.touch.lookPid !== e.pointerId) return;
+      state.touch.lookPid = null;
+      e.preventDefault();
+    });
+    ui.touchLook?.addEventListener("pointercancel", () => {
+      state.touch.lookPid = null;
+    });
+
+    ui.touchJump?.addEventListener("pointerdown", (e) => {
+      if (!state.touch.enabled) return;
+      state.touch.jump = true;
+      sfx.play("click");
+      e.preventDefault();
+    });
+
+    const pressAction = () => {
+      const isCombatMode = profile.gameMode === "gunfight" || profile.gameMode === "forest99";
+      if (isCombatMode) {
+        state.wantShoot = true;
+        state.triggerShoot = true;
+      } else {
+        state.wantBreak = true;
+      }
+    };
+    const releaseAction = () => {
+      state.wantBreak = false;
+      state.wantShoot = false;
+      state.triggerShoot = false;
+    };
+    ui.touchAction?.addEventListener("pointerdown", (e) => {
+      if (!state.touch.enabled) return;
+      pressAction();
+      e.preventDefault();
+    });
+    ui.touchAction?.addEventListener("pointerup", (e) => {
+      releaseAction();
+      e.preventDefault();
+    });
+    ui.touchAction?.addEventListener("pointercancel", () => releaseAction());
+
+    const pressPlace = () => {
+      state.wantPlace = true;
+    };
+    const releasePlace = () => {
+      state.wantPlace = false;
+    };
+    ui.touchPlace?.addEventListener("pointerdown", (e) => {
+      if (!state.touch.enabled) return;
+      pressPlace();
+      e.preventDefault();
+    });
+    ui.touchPlace?.addEventListener("pointerup", (e) => {
+      releasePlace();
+      e.preventDefault();
+    });
+    ui.touchPlace?.addEventListener("pointercancel", () => releasePlace());
+
+    ui.touchMenu?.addEventListener("click", () => {
+      if (ui.sidePanel?.classList.contains("hidden")) openSidePanel("home");
+      else closeSidePanel();
+      sfx.play("click");
+    });
+
     // P2P connect UI
     ui.p2pCreateBtn?.addEventListener("click", async () => {
       try {
@@ -5717,22 +5908,9 @@ async function bootstrap() {
 
     window.addEventListener("mousemove", (e) => {
       if (!state.running) return;
-      const sens = 0.0023;
-
-      const applyDelta = (dx, dy) => {
-        if (profile.camMode === "third") {
-          state.camYaw -= dx * sens;
-          state.camPitch -= dy * sens;
-          state.camPitch = clamp(state.camPitch, -1.15, 1.15);
-        } else {
-          state.yaw -= dx * sens;
-          state.pitch -= dy * sens;
-      state.pitch = clamp(state.pitch, -1.15, 1.15);
-        }
-      };
 
       if (state.pointerLocked) {
-        applyDelta(e.movementX, e.movementY);
+        applyLookDelta(e.movementX, e.movementY);
         return;
       }
       if (state.dragLook) {
@@ -5740,7 +5918,7 @@ async function bootstrap() {
         const dy = e.clientY - state.lastMouseY;
         state.lastMouseX = e.clientX;
         state.lastMouseY = e.clientY;
-        applyDelta(dx, dy);
+        applyLookDelta(dx, dy);
       }
     });
 

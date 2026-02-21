@@ -278,6 +278,21 @@
       </div>
       <div id="hotbar" class="hotbar" aria-label="hotbar"></div>
       <div class="crosshair" aria-hidden="true"></div>
+
+      <!-- Touch controls (tablet / mobile) -->
+      <div id="touchControls" class="touch" aria-label="touch controls">
+        <div id="touchMove" class="touch__move" aria-label="move joystick">
+          <div class="joy joy--base"></div>
+          <div id="touchStick" class="joy joy--stick"></div>
+        </div>
+        <div id="touchLook" class="touch__look" aria-label="look pad"></div>
+        <div class="touch__btns" aria-label="touch buttons">
+          <button id="touchJump" class="touchbtn" type="button">跳</button>
+          <button id="touchAction" class="touchbtn touchbtn--primary" type="button">攻</button>
+          <button id="touchPlace" class="touchbtn" type="button">放</button>
+          <button id="touchMenu" class="touchbtn touchbtn--ghost" type="button">M</button>
+        </div>
+      </div>
     </div>
 
     <canvas id="game" aria-label="game canvas"></canvas>
