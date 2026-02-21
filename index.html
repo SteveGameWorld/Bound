@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>BOUND</title>
+    <link rel="icon" href="data:," />
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <div id="menu" class="menu">
+      <div class="menu__card">
+        <div class="menu__title">BOUND</div>
+        <div class="menu__sub">WASD 移動｜空白跳躍｜滑鼠看方向｜左鍵破壞｜右鍵放置｜1~5 選方塊</div>
+        <div class="menu__row">
+          <button id="playBtn" class="btn btn--primary">開始</button>
+          <button id="loadBtn" class="btn">載入世界</button>
+          <button id="clearBtn" class="btn btn--ghost">清除存檔</button>
+        </div>
+        <div id="bootMsg" class="menu__hint muted">載入中…</div>
+
+        <div class="menu__section">
+          <div class="menu__sectionTitle">音效</div>
+          <div class="menu__row">
+            <button id="sfxToggleBtn" class="btn btn--small" type="button">音效：開</button>
+            <label class="range">
+              <span class="muted">音量</span>
+              <input id="sfxVol" type="range" min="0" max="100" value="70" />
+            </label>
+          </div>
+          <div class="menu__hint muted">提示：第一次播放音效需要你點擊一次（瀏覽器限制）。</div>
+        </div>
+
+        <div class="menu__section">
+          <div class="menu__sectionTitle">玩法 / 視角</div>
+          <div class="menu__grid">
+            <div class="menu__col">
+              <div class="menu__label">玩法</div>
+              <div class="chips">
+                <button id="modeSandboxBtn" class="chip active" type="button">沙盒</button>
+                <button id="modeCoinsBtn" class="chip" type="button">金幣收集</button>
+                <button id="modeObbyBtn" class="chip" type="button">跑酷</button>
+              </div>
+              <div class="menu__hint muted" id="modeHint">沙盒：自由放置/破壞方塊。</div>
+            </div>
+            <div class="menu__col">
+              <div class="menu__label">視角</div>
+              <div class="chips">
+                <button id="camThirdBtn" class="chip active" type="button">第三人稱</button>
+                <button id="camFirstBtn" class="chip" type="button">第一人稱</button>
+                <button id="camTopBtn" class="chip" type="button">俯視</button>
+              </div>
+              <div class="menu__hint muted">遊戲內快捷鍵：<b>V</b> 切換視角</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu__section">
+          <div class="menu__sectionTitle">遊戲清單（100）</div>
+          <div class="menu__sub">這裡是 100 種可選的遊戲體驗（跑酷/金幣/沙盒的不同種子與參數）。</div>
+          <div class="menu__row">
+            <button id="expRandomBtn" class="btn btn--small btn--primary" type="button">隨機一個</button>
+            <div class="pill"><span class="muted">目前</span> <b id="expNameText">未選擇</b></div>
+          </div>
+          <div class="menu__hint muted">提示：點任何一張遊戲卡片會直接進入；進入後左側會出現功能列，按 <b>M</b> 可開/關面板。</div>
+          <div id="experienceList" class="exlist" role="list"></div>
+        </div>
+
+        <div class="menu__section">
+          <div class="menu__sectionTitle">角色外觀 / 服裝</div>
+          <div class="menu__grid">
+            <div class="menu__col">
+              <div class="menu__label">膚色</div>
+              <div id="skinColors" class="swatches"></div>
+              <div class="menu__label">上衣</div>
+              <div id="shirtColors" class="swatches"></div>
+              <div class="menu__label">上衣圖案</div>
+              <div id="shirtStyles" class="chips"></div>
+              <div class="menu__label">褲子</div>
+              <div id="pantsColors" class="swatches"></div>
+              <div class="menu__label">褲子圖案</div>
+              <div id="pantsStyles" class="chips"></div>
+            </div>
+            <div class="menu__col">
+              <div class="menu__label">帽子</div>
+              <div id="hatList" class="chips"></div>
+              <div class="menu__label">配件</div>
+              <div id="accList" class="chips"></div>
+              <div class="menu__row">
+                <button id="randomAvatarBtn" class="btn">隨機造型</button>
+                <button id="resetAvatarBtn" class="btn btn--ghost">重置造型</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="menu__section">
+          <div class="menu__sectionTitle">課金外觀（原創）</div>
+          <div class="menu__sub">
+            參考 Roblox 熱門課金類型（例如：翅膀/光環/背包、稀有頭部套件），此處為原創模型與名稱。
+          </div>
+          <div class="shopbar">
+            <div class="pill"><span class="muted">寶石</span> <b id="gemsText">0</b></div>
+            <button id="buyGemsBtn" class="btn btn--small">購買 1000 寶石（模擬）</button>
+            <button id="equipNoneBtn" class="btn btn--small btn--ghost">卸下特效</button>
+          </div>
+          <div id="cosmeticGrid" class="cosgrid"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="hud" class="hud hidden">
+      <div id="sidebar" class="sidebar" aria-label="sidebar">
+        <button id="sideHome" class="sidebtn active" type="button" data-panel="home" aria-label="home">
+          <div class="sidebtn__icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path fill="currentColor" d="M12 3.2 2.6 11.1c-.4.3-.5 1-.2 1.4.3.4 1 .5 1.4.2l.9-.7V21c0 .6.4 1 1 1h4.8c.6 0 1-.4 1-1v-5.2h1V21c0 .6.4 1 1 1h4.8c.6 0 1-.4 1-1v-9.1l.9.7c.4.3 1.1.2 1.4-.2.3-.4.2-1.1-.2-1.4L12 3.2Z"/>
+            </svg>
+          </div>
+          <div class="sidebtn__label">首頁</div>
+        </button>
+
+        <button id="sideStats" class="sidebtn" type="button" data-panel="stats" aria-label="stats">
+          <div class="sidebtn__icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path fill="currentColor" d="M4 21c-.6 0-1-.4-1-1V4c0-.6.4-1 1-1s1 .4 1 1v16h16c.6 0 1 .4 1 1s-.4 1-1 1H4Zm4-3c-.6 0-1-.4-1-1v-6c0-.6.4-1 1-1s1 .4 1 1v6c0 .6-.4 1-1 1Zm5 0c-.6 0-1-.4-1-1V8c0-.6.4-1 1-1s1 .4 1 1v9c0 .6-.4 1-1 1Zm5 0c-.6 0-1-.4-1-1v-4c0-.6.4-1 1-1s1 .4 1 1v4c0 .6-.4 1-1 1Z"/>
+            </svg>
+          </div>
+          <div class="sidebtn__label">圖表</div>
+        </button>
+
+        <button id="sideAvatar" class="sidebtn" type="button" data-panel="avatar" aria-label="avatar">
+          <div class="sidebtn__icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path fill="currentColor" d="M12 12.2c-2.6 0-4.7-2.1-4.7-4.7S9.4 2.8 12 2.8s4.7 2.1 4.7 4.7-2.1 4.7-4.7 4.7Zm0-7.4c-1.5 0-2.7 1.2-2.7 2.7s1.2 2.7 2.7 2.7 2.7-1.2 2.7-2.7S13.5 4.8 12 4.8ZM5.2 21.2c-.6 0-1-.4-1-1 0-3.8 3.5-6.8 7.8-6.8s7.8 3 7.8 6.8c0 .6-.4 1-1 1s-1-.4-1-1c0-2.7-2.7-4.8-5.8-4.8S6.2 17.5 6.2 20.2c0 .6-.4 1-1 1Z"/>
+            </svg>
+          </div>
+          <div class="sidebtn__label">虛擬人偶</div>
+        </button>
+
+        <button id="sideSquad" class="sidebtn" type="button" data-panel="squad" aria-label="squad">
+          <div class="sidebtn__icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path fill="currentColor" d="M8.4 12.6c-1.9 0-3.4-1.5-3.4-3.4S6.5 5.8 8.4 5.8s3.4 1.5 3.4 3.4-1.5 3.4-3.4 3.4Zm7.2-.2c-1.7 0-3.1-1.4-3.1-3.1S13.9 6.2 15.6 6.2s3.1 1.4 3.1 3.1-1.4 3.1-3.1 3.1ZM4.2 21.2c-.6 0-1-.4-1-1 0-3 2.7-5.4 6.2-5.4 1.8 0 3.4.6 4.6 1.6.4.3.4 1 .1 1.4-.3.4-1 .4-1.4.1-.8-.7-2-1.1-3.3-1.1-2.4 0-4.2 1.5-4.2 3.4 0 .6-.4 1-1 1Zm15.6 0c-.6 0-1-.4-1-1 0-1.6-1.2-2.9-3-3.3-.5-.1-.9-.7-.8-1.2.1-.5.7-.9 1.2-.8 2.6.6 4.6 2.6 4.6 5.3 0 .6-.4 1-1 1Z"/>
+            </svg>
+          </div>
+          <div class="sidebtn__label">隊伍</div>
+        </button>
+
+        <button id="sideMore" class="sidebtn" type="button" data-panel="more" aria-label="more">
+          <div class="sidebtn__icon">
+            <svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true">
+              <path fill="currentColor" d="M6.2 13.2c-.7 0-1.2-.5-1.2-1.2s.5-1.2 1.2-1.2 1.2.5 1.2 1.2-.5 1.2-1.2 1.2Zm5.8 0c-.7 0-1.2-.5-1.2-1.2s.5-1.2 1.2-1.2 1.2.5 1.2 1.2-.5 1.2-1.2 1.2Zm5.8 0c-.7 0-1.2-.5-1.2-1.2s.5-1.2 1.2-1.2 1.2.5 1.2 1.2-.5 1.2-1.2 1.2Z"/>
+            </svg>
+          </div>
+          <div class="sidebtn__label">更多</div>
+        </button>
+      </div>
+
+      <div id="sidePanel" class="sidepanel hidden" aria-label="side panel">
+        <div class="sidepanel__card">
+          <div class="sidepanel__top">
+            <div id="sidePanelTitle" class="sidepanel__title">首頁</div>
+            <div class="sidepanel__row">
+              <button id="sideClose" class="btn btn--small btn--ghost" type="button">關閉（M）</button>
+            </div>
+          </div>
+
+          <div id="panel_home" class="spane">
+            <div class="menu__sub">點任一個遊戲卡片立即進入。</div>
+            <div class="menu__row">
+              <button id="panelRandomBtn" class="btn btn--small btn--primary" type="button">隨機一個</button>
+              <div class="pill"><span class="muted">目前</span> <b id="panelExpName">-</b></div>
+            </div>
+            <div id="panelExperienceList" class="exlist" role="list"></div>
+          </div>
+
+          <div id="panel_stats" class="spane hidden">
+            <div class="menu__sub">簡單統計（本機）。</div>
+            <div class="menu__row">
+              <div class="pill"><span class="muted">寶石</span> <b id="panelGems">-</b></div>
+              <div class="pill"><span class="muted">擁有外觀</span> <b id="panelOwned">-</b></div>
+            </div>
+            <div class="menu__row">
+              <div class="pill"><span class="muted">目前遊戲</span> <b id="panelGame">-</b></div>
+              <div class="pill"><span class="muted">目前玩法</span> <b id="panelMode">-</b></div>
+            </div>
+          </div>
+
+          <div id="panel_avatar" class="spane hidden">
+            <div class="menu__sub">像 Roblox 一樣挑選：上方分類，下面點卡片直接套用。</div>
+            <div id="catalogTabs" class="tabbar" role="tablist" aria-label="catalog tabs">
+              <button class="tab active" type="button" data-tab="all" role="tab">全部</button>
+              <button class="tab" type="button" data-tab="avatar" role="tab">虛擬人偶</button>
+              <button class="tab" type="button" data-tab="body" role="tab">身體</button>
+              <button class="tab" type="button" data-tab="clothing" role="tab">服裝</button>
+              <button class="tab" type="button" data-tab="accessory" role="tab">飾品</button>
+              <button class="tab" type="button" data-tab="emote" role="tab">動畫</button>
+            </div>
+            <div id="catalogHint" class="menu__hint muted">提示：點卡片即可套用（本機）。</div>
+            <div id="catalogGrid" class="catgrid" role="list"></div>
+          </div>
+
+          <div id="panel_squad" class="spane hidden">
+            <div class="menu__sub">同一台電腦多分頁朋友（BroadcastChannel）。</div>
+            <div class="menu__row">
+              <div class="pill"><span class="muted">在線</span> <b id="panelPeers">0</b></div>
+              <div class="pill"><span class="muted">提示</span> <span class="muted">開第二個分頁進同網址</span></div>
+            </div>
+            <div id="panelPeerList" class="peerlist"></div>
+
+            <div class="menu__section">
+              <div class="menu__sectionTitle">連線（兩台電腦）</div>
+              <div class="menu__sub">不用伺服器：用代碼連線（P2P）。一人建立房間→傳「Offer」給朋友；朋友貼上→產生「Answer」回傳；房主貼上 Answer 就連上。</div>
+              <div class="menu__row">
+                <button id="p2pCreateBtn" class="btn btn--small btn--primary" type="button">建立房間（產生 Offer）</button>
+                <button id="p2pCloseBtn" class="btn btn--small btn--ghost" type="button">中斷連線</button>
+              </div>
+              <div id="p2pStatus" class="menu__hint muted">連線：-</div>
+              <div class="menu__grid" style="margin-top:10px">
+                <div class="menu__col">
+                  <div class="menu__label">Offer（給朋友）</div>
+                  <textarea id="p2pOffer" class="textarea" rows="5" placeholder="點「建立房間」後會出現"></textarea>
+                  <div class="menu__row">
+                    <button id="p2pCopyOffer" class="btn btn--small" type="button">複製 Offer</button>
+                  </div>
+                </div>
+                <div class="menu__col">
+                  <div class="menu__label">Answer（朋友回傳）</div>
+                  <textarea id="p2pAnswer" class="textarea" rows="5" placeholder="把朋友的 Answer 貼在這裡"></textarea>
+                  <div class="menu__row">
+                    <button id="p2pMakeAnswer" class="btn btn--small" type="button">用 Offer 產生 Answer</button>
+                    <button id="p2pApplyAnswer" class="btn btn--small btn--primary" type="button">套用 Answer（完成連線）</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div id="panel_more" class="spane hidden">
+            <div class="menu__sub">設定 / 音效 / 返回。</div>
+            <div class="menu__row">
+              <button id="panelSfxToggle" class="btn btn--small" type="button">音效：-</button>
+              <label class="range">
+                <span class="muted">音量</span>
+                <input id="panelSfxVol" type="range" min="0" max="100" value="70" />
+              </label>
+            </div>
+            <div class="menu__section">
+              <div class="menu__sectionTitle">VIP</div>
+              <div class="menu__sub">輸入 VIP 代碼登入後，虛擬人偶商店全部免費（本機）。</div>
+              <div class="menu__row">
+                <input id="vipCode" class="textinput" type="password" placeholder="輸入 VIP 代碼" autocomplete="off" />
+                <button id="vipLoginBtn" class="btn btn--small btn--primary" type="button">登入</button>
+                <button id="vipLogoutBtn" class="btn btn--small btn--ghost" type="button">登出</button>
+              </div>
+              <div id="vipStatus" class="menu__hint muted">VIP：-</div>
+            </div>
+            <div class="menu__row">
+              <button id="panelToMenu" class="btn btn--small btn--ghost" type="button">回主選單</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hud__left">
+        <div class="pill"><span class="muted">方塊</span> <b id="blockName">Grass</b></div>
+        <div class="pill"><span class="muted">玩法</span> <b id="gameModeText">沙盒</b></div>
+        <div class="pill"><span class="muted">視角</span> <b id="camModeText">第三人稱</b></div>
+        <div class="pill"><span class="muted">遊戲</span> <b id="hudExpText">-</b></div>
+        <div class="pill"><span class="muted">進度</span> <b id="progressText">-</b></div>
+        <div class="pill"><span class="muted">提示</span> <span id="hintText">-</span></div>
+      </div>
+      <div class="hud__right">
+        <button id="sfxBtn" class="btn btn--small">音效</button>
+        <button id="saveBtn" class="btn btn--small">存檔</button>
+        <button id="exitBtn" class="btn btn--small btn--ghost">主選單</button>
+      </div>
+      <div id="hotbar" class="hotbar" aria-label="hotbar"></div>
+      <div class="crosshair" aria-hidden="true"></div>
+    </div>
+
+    <canvas id="game" aria-label="game canvas"></canvas>
+
+    <script>
+      // 啟動偵測：避免「點什麼都沒反應」但其實是 module 沒載入
+      const bootMsg = document.getElementById("bootMsg");
+      const showBoot = (t) => (bootMsg.textContent = t);
+      const VER = "build-2026-02-21-BOUND";
+
+      if (location.protocol === "file:") {
+        showBoot(
+          "請用本機伺服器開啟：file:// 會阻擋 ES Module 載入。請在 BOUND/ 執行：node dev-server.js（或 python3 -m http.server 5192），然後用瀏覽器開啟對應網址（例如 http://127.0.0.1:5192/）。"
+        );
+      } else {
+        showBoot(`進入遊戲後會鎖定滑鼠指標（按 Esc 可跳出）。(${VER})`);
+        setTimeout(() => {
+          if (!window.__BOUND_BOOT_OK) {
+            const origin = location.origin || `${location.protocol}//${location.hostname}${location.port ? ":" + location.port : ""}`;
+            showBoot(
+              `主程式尚未就緒。請看上方訊息（通常會顯示「啟動失敗：...」的原因）。若沒有原因，請確認用 ${origin}/ 開啟，且網路可連到 three.js CDN。`
+            );
+          }
+        }, 1200);
+      }
+
+      // 直接在畫面上回饋「有沒有收到點擊」
+      const playBtn = document.getElementById("playBtn");
+      const loadBtn = document.getElementById("loadBtn");
+      const clearBtn = document.getElementById("clearBtn");
+      playBtn?.addEventListener("click", () => {
+        if (!window.__BOUND_BOOT_OK) {
+          const cur = bootMsg?.textContent || "";
+          if (cur.startsWith("啟動失敗：")) {
+            showBoot(`${cur}（你點了「開始」）`);
+          } else {
+            showBoot(`你點了「開始」，但主程式尚未就緒。請看上方是否有「啟動失敗：...」。(${VER})`);
+          }
+        }
+      });
+      loadBtn?.addEventListener("click", () => {
+        if (!window.__BOUND_BOOT_OK) {
+          const cur = bootMsg?.textContent || "";
+          if (cur.startsWith("啟動失敗：")) {
+            showBoot(`${cur}（你點了「載入世界」）`);
+          } else {
+            showBoot(`你點了「載入世界」，但主程式尚未就緒。請看上方是否有「啟動失敗：...」。(${VER})`);
+          }
+        }
+      });
+      clearBtn?.addEventListener("click", () => showBoot(`你點了「清除存檔」。(${VER})`));
+
+      window.addEventListener("error", (e) => {
+        showBoot(`發生錯誤：${e.message || e.type}`);
+      });
+      window.addEventListener("unhandledrejection", (e) => {
+        showBoot(`發生錯誤：${(e.reason && (e.reason.message || String(e.reason))) || "Promise rejection"}`);
+      });
+    </script>
+
+    <script type="module">
+      // 用 dynamic import 才能把載入錯誤顯示在畫面上
+      import("./main.js").catch((e) => {
+        const bootMsg = document.getElementById("bootMsg");
+        if (bootMsg) bootMsg.textContent = `主程式載入失敗：${e?.message || String(e)}`;
+        console.error(e);
+      });
+    </script>
+  </body>
+</html>
