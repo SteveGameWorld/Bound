@@ -1234,11 +1234,14 @@ async function bootstrap() {
       // clear mode objects
       for (const child of [...mode.group.children]) {
         mode.group.remove(child);
-        if (child.geometry) child.geometry.dispose?.();
-        if (child.material) {
-          if (Array.isArray(child.material)) child.material.forEach((m) => m.dispose?.());
-          else child.material.dispose?.();
-        }
+        // dispose materials/geometries (support nested groups too)
+        child.traverse?.((obj) => {
+          if (obj?.geometry) obj.geometry.dispose?.();
+          if (obj?.material) {
+            if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose?.());
+            else obj.material.dispose?.();
+          }
+        });
       }
       mode.coins = { items: [], collected: 0, total: 0, startT: 0, done: false };
       mode.obby = { platforms: [], hazards: [], movers: [], checkpoints: [], idx: 0, startT: 0, done: false };
@@ -1278,6 +1281,17 @@ async function bootstrap() {
         winShown: false,
       };
     }
+
+    const disposeObject3D = (root) => {
+      if (!root) return;
+      root.traverse?.((obj) => {
+        if (obj?.geometry) obj.geometry.dispose?.();
+        if (obj?.material) {
+          if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose?.());
+          else obj.material.dispose?.();
+        }
+      });
+    };
 
     function setBlock(x, y, z, type) {
       const k = keyOf(x, y, z);
@@ -1737,6 +1751,9 @@ async function bootstrap() {
       mode.gunfight.beginRound();
     }
 
+    // forest99 mob factory (set in setupForest99Mode)
+    let makeForestMob = null;
+
     function setupForest99Mode(opts = {}) {
       const rng = typeof opts.rng === "function" ? opts.rng : Math.random;
       const params = opts.params || {};
@@ -1836,6 +1853,70 @@ async function bootstrap() {
       safeFx.userData = { flame, ring };
       mode.group.add(safeFx);
       mode.forest99.safeFx = safeFx;
+
+      makeForestMob = (seedish = Math.random()) => {
+        // blocky humanoid: head/torso/arms/legs
+        const g = new THREE.Group();
+        const seed = hashToSeed(`mob_${seedish}_${Date.now().toString(16).slice(-4)}`);
+        const r = mulberry32(seed);
+        const hue = (320 + r() * 60) | 0;
+        const skin = new THREE.MeshStandardMaterial({ color: 0xf1c7a6, roughness: 0.85 });
+        const flesh = new THREE.MeshStandardMaterial({ color: new THREE.Color(`hsl(${hue}, 65%, 38%)`), roughness: 0.75, emissive: new THREE.Color(`hsl(${hue}, 75%, 10%)`), emissiveIntensity: 0.8 });
+        const dark = new THREE.MeshStandardMaterial({ color: 0x0b1020, roughness: 0.95 });
+        const glow = new THREE.MeshStandardMaterial({ color: 0xff2d95, roughness: 0.25, metalness: 0.1, emissive: 0xff2d95, emissiveIntensity: 1.5 });
+
+        const torso = new THREE.Mesh(new THREE.BoxGeometry(0.82, 0.98, 0.44), flesh);
+        torso.position.set(0, 1.18, 0);
+        torso.castShadow = true;
+        torso.receiveShadow = true;
+
+        const head = new THREE.Mesh(new THREE.BoxGeometry(0.56, 0.56, 0.56), flesh);
+        head.position.set(0, 1.92, 0);
+        head.castShadow = true;
+        head.receiveShadow = true;
+
+        const jaw = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.18, 0.50), dark);
+        jaw.position.set(0, 1.70, 0.08);
+        jaw.castShadow = true;
+
+        const eyeL = new THREE.Mesh(new THREE.BoxGeometry(0.10, 0.10, 0.06), glow);
+        const eyeR = eyeL.clone();
+        eyeL.position.set(-0.14, 1.95, 0.30);
+        eyeR.position.set(0.14, 1.95, 0.30);
+        eyeL.castShadow = false;
+        eyeR.castShadow = false;
+
+        const armL = new THREE.Mesh(new THREE.BoxGeometry(0.22, 0.78, 0.22), flesh);
+        const armR = armL.clone();
+        armL.position.set(-0.62, 1.30, 0);
+        armR.position.set(0.62, 1.30, 0);
+        armL.castShadow = true;
+        armR.castShadow = true;
+        armL.receiveShadow = true;
+        armR.receiveShadow = true;
+
+        const legL = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.86, 0.26), flesh);
+        const legR = legL.clone();
+        legL.position.set(-0.22, 0.43, 0);
+        legR.position.set(0.22, 0.43, 0);
+        legL.castShadow = true;
+        legR.castShadow = true;
+        legL.receiveShadow = true;
+        legR.receiveShadow = true;
+
+        // simple "hands" tone
+        const handL = new THREE.Mesh(new THREE.BoxGeometry(0.24, 0.16, 0.24), skin);
+        const handR = handL.clone();
+        handL.position.set(-0.62, 0.90, 0);
+        handR.position.set(0.62, 0.90, 0);
+        handL.castShadow = true;
+        handR.castShadow = true;
+
+        g.add(torso, head, jaw, eyeL, eyeR, armL, armR, legL, legR, handL, handR);
+        g.userData.parts = { head, torso, armL, armR, legL, legR };
+        g.userData.kind = "forest_mob";
+        return g;
+      };
 
       // forest ground
       for (let x = -size; x <= size; x++) {
@@ -3106,6 +3187,13 @@ async function bootstrap() {
       add({ id: "av_preset_neo", name: "潮流：Neo", group: "avatar", kind: "preset", meta: "深色街頭", payload: { shirt: "#0f1b3d", pants: "#111827", shirtStyle: "neon", pantsStyle: "solid" } });
       add({ id: "av_preset_snow", name: "潮流：Snow", group: "avatar", kind: "preset", meta: "白灰系", payload: { shirt: "#ffffff", pants: "#334155", shirtStyle: "stripe", pantsStyle: "solid" } });
       add({ id: "av_preset_vip", name: "潮流：VIP", group: "avatar", kind: "preset", meta: "圖樣上衣", payload: { shirt: "#0b1020", pants: "#111827", shirtStyle: "graphic_vip", pantsStyle: "solid" } });
+      add({ id: "av_preset_cyber", name: "潮流：Cyber", group: "avatar", kind: "preset", meta: "霓虹科技", payload: { shirt: "#0b1020", pants: "#0b1020", shirtStyle: "graphic_lightning", pantsStyle: "neon", hat: "hood", acc: "backpack" } });
+      add({ id: "av_preset_royal", name: "潮流：Royal", group: "avatar", kind: "preset", meta: "王者金黑", payload: { shirt: "#111827", pants: "#111827", shirtStyle: "gradient", pantsStyle: "solid", hat: "crown", acc: "glasses" } });
+      add({ id: "av_preset_ranger", name: "潮流：Ranger", group: "avatar", kind: "preset", meta: "森林遊俠", payload: { shirt: "#16a34a", pants: "#92400e", shirtStyle: "camo", pantsStyle: "solid", hat: "cap", acc: "horns" } });
+      add({ id: "av_preset_storm", name: "潮流：Storm", group: "avatar", kind: "preset", meta: "雷霆藍白", payload: { shirt: "#2b6cff", pants: "#334155", shirtStyle: "graphic_lightning", pantsStyle: "stripe", hat: "tophat", acc: "glasses" } });
+      add({ id: "av_preset_skull", name: "潮流：Skull", group: "avatar", kind: "preset", meta: "暗黑骷髏", payload: { shirt: "#0b1020", pants: "#1f2937", shirtStyle: "graphic_skull", pantsStyle: "solid", hat: "hood", acc: "horns" } });
+      add({ id: "av_preset_galaxy", name: "潮流：Galaxy", group: "avatar", kind: "preset", meta: "星雲閃耀", payload: { shirt: "#0b1020", pants: "#111827", shirtStyle: "graphic_galaxy", pantsStyle: "graphic_galaxy", hat: "cap", acc: "backpack" } });
+      add({ id: "av_preset_kawaii", name: "潮流：Kawaii", group: "avatar", kind: "preset", meta: "甜系粉紫", payload: { shirt: "#7c2cff", pants: "#0ea5e9", shirtStyle: "stripe", pantsStyle: "gradient", hat: "tophat", acc: "glasses" } });
 
       // body / skin
       for (let i = 0; i < AVATAR.skinPalette.length; i++) {
@@ -3172,7 +3260,62 @@ async function bootstrap() {
           ctx.fillText(t, 14, 28);
         };
 
-        if (item.kind === "skin") {
+        if (item.kind === "preset") {
+          const shirtHex = item.payload?.shirt || "#2b6cff";
+          const pantsHex = item.payload?.pants || "#111827";
+          const shirtStyle = item.payload?.shirtStyle || "solid";
+          const pantsStyle = item.payload?.pantsStyle || "solid";
+          const skinHex = item.payload?.skin || avatar.skin || "#f7d6c1";
+
+          // head
+          ctx.fillStyle = skinHex;
+          ctx.beginPath();
+          ctx.arc(W / 2, 92, 34, 0, Math.PI * 2);
+          ctx.fill();
+          // eyes
+          ctx.fillStyle = "rgba(0,0,0,0.45)";
+          ctx.beginPath();
+          ctx.arc(W / 2 - 12, 88, 4.5, 0, Math.PI * 2);
+          ctx.arc(W / 2 + 12, 88, 4.5, 0, Math.PI * 2);
+          ctx.fill();
+
+          // shirt (use cloth texture if available)
+          const shirtTex = buildClothTexture(shirtStyle, shirtHex, "shirt");
+          if (shirtTex?.image) ctx.drawImage(shirtTex.image, W / 2 - 70, 122, 140, 62);
+          else {
+            ctx.fillStyle = shirtHex;
+            ctx.fillRect(W / 2 - 70, 122, 140, 62);
+          }
+          // pants
+          const pantsTex = buildClothTexture(pantsStyle, pantsHex, "pants");
+          if (pantsTex?.image) ctx.drawImage(pantsTex.image, W / 2 - 70, 186, 140, 58);
+          else {
+            ctx.fillStyle = pantsHex;
+            ctx.fillRect(W / 2 - 70, 186, 140, 58);
+          }
+          // simple outline
+          ctx.strokeStyle = "rgba(230,233,245,0.28)";
+          ctx.lineWidth = 3;
+          ctx.strokeRect(W / 2 - 70, 122, 140, 62);
+          ctx.strokeRect(W / 2 - 70, 186, 140, 58);
+
+          // hat / acc indicators
+          const hat = item.payload?.hat;
+          const acc = item.payload?.acc;
+          if (hat) {
+            ctx.fillStyle = "rgba(110,231,255,0.55)";
+            ctx.fillRect(W / 2 - 34, 54, 68, 10);
+            ctx.fillRect(W / 2 - 24, 38, 48, 18);
+          }
+          if (acc) {
+            ctx.strokeStyle = "rgba(110,231,255,0.55)";
+            ctx.lineWidth = 6;
+            ctx.beginPath();
+            ctx.arc(W / 2, 150, 44, 0, Math.PI * 2);
+            ctx.stroke();
+          }
+          label("套裝");
+        } else if (item.kind === "skin") {
           ctx.fillStyle = item.payload.skin;
           ctx.beginPath();
           ctx.arc(W / 2, H / 2 + 10, 60, 0, Math.PI * 2);
@@ -4455,18 +4598,22 @@ async function bootstrap() {
             const mobHits = raycaster.intersectObjects(mode.forest99.mobs.map((m) => m.mesh), true);
             if (mobHits.length) {
               const obj = mobHits[0].object;
-              const mob = mode.forest99.mobs.find((m) => m.mesh === obj || m.mesh === obj.parent);
-              if (mob) {
-                mob.hp -= 40;
-                sfx.play("hit");
-                if (mob.hp <= 0) {
-                  mode.group.remove(mob.mesh);
-                  mob.mesh.geometry?.dispose?.();
-                  mob.mesh.material?.dispose?.();
-                  mode.forest99.mobs = mode.forest99.mobs.filter((x) => x !== mob);
-                  sfx.play("kill");
+              // hit could be a child mesh inside the mob group
+              let cur = obj;
+              for (let i = 0; i < 6 && cur; i++) {
+                const mob = mode.forest99.mobs.find((m) => m.mesh === cur);
+                if (mob) {
+                  mob.hp -= 40;
+                  sfx.play("hit");
+                  if (mob.hp <= 0) {
+                    mode.group.remove(mob.mesh);
+                    disposeObject3D(mob.mesh);
+                    mode.forest99.mobs = mode.forest99.mobs.filter((x) => x !== mob);
+                    sfx.play("kill");
+                  }
+                  return;
                 }
-                return;
+                cur = cur.parent;
               }
             }
 
@@ -4511,15 +4658,15 @@ async function bootstrap() {
               }
             }
           } else if (profile.gameMode === "forest99") {
-            const mob = mode.forest99.mobs.find((m) => m.mesh === obj);
+            let mob = mode.forest99.mobs.find((m) => m.mesh === obj);
+            if (!mob && obj?.parent) mob = mode.forest99.mobs.find((m) => m.mesh === obj.parent);
             if (mob) {
               mob.hp -= 40;
               sfx.play("hit");
               if (mob.hp <= 0) {
                 // remove
                 mode.group.remove(mob.mesh);
-                mob.mesh.geometry?.dispose?.();
-                mob.mesh.material?.dispose?.();
+                disposeObject3D(mob.mesh);
                 mode.forest99.mobs = mode.forest99.mobs.filter((x) => x !== mob);
                 sfx.play("kill");
               }
@@ -4676,19 +4823,26 @@ async function bootstrap() {
             // spawn wave
             if (mode.forest99.night <= mode.forest99.maxNights) {
               const wave = 2 + Math.min(18, (mode.forest99.night * 0.7) | 0);
-            const mobGeo = new THREE.CapsuleGeometry(0.33, 0.8, 5, 10);
-            const mobMat = new THREE.MeshStandardMaterial({ color: 0x9f1239, roughness: 0.7, emissive: 0x220010 });
               for (let i = 0; i < wave; i++) {
-              const m = new THREE.Mesh(mobGeo, mobMat);
-              m.castShadow = true;
-              m.receiveShadow = true;
+              const m = (typeof makeForestMob === "function" ? makeForestMob(Math.random()) : new THREE.Group());
+              m.traverse?.((o) => {
+                o.castShadow = true;
+                o.receiveShadow = true;
+              });
               const a = Math.random() * Math.PI * 2;
               const safeC = mode.forest99.safe?.center ?? new THREE.Vector3(0, 1.1, 8);
               const safeR = mode.forest99.safe?.radius ?? 4.2;
               const r = (safeR + 10) + Math.random() * 20;
-              m.position.set(safeC.x + Math.cos(a) * r, 1.2, safeC.z + Math.sin(a) * r);
+              m.position.set(safeC.x + Math.cos(a) * r, 1.0, safeC.z + Math.sin(a) * r);
               mode.group.add(m);
-              mode.forest99.mobs.push({ mesh: m, hp: 70, atkCd: Math.random() * 0.8, spd: 2.2 + Math.random() * 0.6 });
+              mode.forest99.mobs.push({
+                mesh: m,
+                hp: 70,
+                atkCd: Math.random() * 0.8,
+                spd: 2.2 + Math.random() * 0.6,
+                walkT: Math.random() * 10,
+                swingT: 0,
+              });
             }
             }
             ui.hintText.textContent = `第 ${mode.forest99.night} 夜開始！`;
@@ -4730,6 +4884,20 @@ async function bootstrap() {
               toP.normalize();
               const spd = hostile ? m.spd : m.spd * 0.55;
               m.mesh.position.addScaledVector(toP, dt * spd);
+              // face move direction (blocky humanoid)
+              m.mesh.rotation.y = Math.atan2(toP.x, toP.z);
+              m.walkT = (m.walkT || 0) + dt * spd * 2.8;
+            }
+
+            // simple walk animation (arms/legs swing)
+            const parts = m.mesh?.userData?.parts;
+            if (parts?.armL && parts?.armR && parts?.legL && parts?.legR) {
+              const swing = Math.sin((m.walkT || 0) * 3.2) * clamp(d, 0, 1) * 0.65;
+              const idle = hostile ? 0.12 : 0.06;
+              parts.legL.rotation.x = swing;
+              parts.legR.rotation.x = -swing;
+              parts.armL.rotation.x = -swing * 0.8 - idle;
+              parts.armR.rotation.x = swing * 0.8 - idle;
             }
 
             // 結界：怪物推回外側（沒人可以進來）
@@ -4747,10 +4915,22 @@ async function bootstrap() {
 
             if (hostile && d < 1.35 && m.atkCd <= 0) {
               m.atkCd = 0.8 + Math.random() * 0.35;
+              m.swingT = 0.22;
               if (!playerInSafe && mode.forest99.hurtCd <= 0) {
                 mode.forest99.hp -= 8;
                 mode.forest99.hurtCd = 0.22;
                 sfx.play("hurt");
+              }
+            }
+
+            // attack swing animation
+            if (m.swingT > 0) {
+              m.swingT = Math.max(0, m.swingT - dt);
+              const parts = m.mesh?.userData?.parts;
+              if (parts?.armR) {
+                const k = 1 - m.swingT / 0.22;
+                const a = Math.sin(k * Math.PI);
+                parts.armR.rotation.x = -1.25 * a;
               }
             }
           }
