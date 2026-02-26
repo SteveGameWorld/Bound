@@ -5359,7 +5359,7 @@ async function bootstrap() {
     }
 
     function refreshSideStatsUi() {
-      if (ui.panelGems) ui.panelGems.textContent = `${profile.gems}`;
+      if (ui.panelGems) ui.panelGems.textContent = `${vip.ok ? profile.gems : 0}`;
       if (ui.panelOwned) ui.panelOwned.textContent = `${profile.owned?.length || 0}`;
       if (ui.panelGame) ui.panelGame.textContent = activeExp?.name ?? "-";
       if (ui.panelMode) {
@@ -5590,7 +5590,8 @@ async function bootstrap() {
     }
 
     function refreshCosmeticsUi() {
-      if (ui.gemsText) ui.gemsText.textContent = `${profile.gems}`;
+      if (ui.gemsText) ui.gemsText.textContent = `${vip.ok ? profile.gems : 0}`;
+      if (ui.buyGemsBtn) ui.buyGemsBtn.classList.toggle("hidden", !vip.ok);
       if (!ui.cosmeticGrid) return;
       ui.cosmeticGrid.innerHTML = "";
       for (const c of COSMETICS.filter((x) => x.id !== "none")) {
@@ -5631,6 +5632,19 @@ async function bootstrap() {
       }
     }
 
+    const enforceVipEconomy = () => {
+      // 沒 VIP：不要有錢（寶石固定 0，且不允許加值）
+      if (!vip.ok) {
+        if (profile.gems !== 0) {
+          profile.gems = 0;
+          saveProfile(profile);
+        }
+      }
+      if (ui.gemsText) ui.gemsText.textContent = `${vip.ok ? profile.gems : 0}`;
+      if (ui.buyGemsBtn) ui.buyGemsBtn.classList.toggle("hidden", !vip.ok);
+      if (ui.panelGems) ui.panelGems.textContent = `${vip.ok ? profile.gems : 0}`;
+    };
+
     ui.randomAvatarBtn?.addEventListener("click", () => {
       avatar.skin = randPick(AVATAR.skinPalette);
       avatar.shirt = randPick(AVATAR.shirtPalette);
@@ -5660,8 +5674,15 @@ async function bootstrap() {
     });
 
     ui.buyGemsBtn?.addEventListener("click", () => {
+      if (!vip.ok) {
+        enforceVipEconomy();
+        ui.hintText.textContent = "需要 VIP 才能加值";
+        setTimeout(() => (ui.hintText.textContent = "-"), 900);
+        return;
+      }
       profile.gems += 1000;
       saveProfile(profile);
+      enforceVipEconomy();
       refreshCosmeticsUi();
       sfx.play("click");
     });
@@ -5694,6 +5715,7 @@ async function bootstrap() {
         setTimeout(() => (ui.hintText.textContent = "-"), 900);
       }
       if (ui.vipCode) ui.vipCode.value = "";
+      enforceVipEconomy();
       refreshSideMoreUi();
       refreshSideAvatarUi();
       refreshCosmeticsUi();
@@ -5702,6 +5724,7 @@ async function bootstrap() {
     ui.vipLogoutBtn?.addEventListener("click", () => {
       vip.ok = false;
       saveVip(vip);
+      enforceVipEconomy();
       refreshSideMoreUi();
       refreshSideAvatarUi();
       refreshCosmeticsUi();
@@ -6171,6 +6194,7 @@ async function bootstrap() {
     });
 
     refreshAvatarUi();
+    enforceVipEconomy();
     refreshCosmeticsUi();
     applyCosmetic(profile.equipped);
 
