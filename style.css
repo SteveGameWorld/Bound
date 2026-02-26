@@ -480,6 +480,7 @@ canvas {
   width: min(940px, calc(100vw - 28px));
   max-height: calc(100vh - 28px);
   overflow: auto;
+  -webkit-overflow-scrolling: touch;
   border-radius: 18px;
   border: 1px solid rgba(255, 255, 255, 0.12);
   background: rgba(255, 255, 255, 0.06);

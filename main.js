@@ -194,7 +194,7 @@ function hashToSeed(v) {
   return h >>> 0;
 }
 
-function makeExperiences() {
+function makeExperiences(count = 100) {
   const ex = [];
   const adjObby = ["霓虹", "彩虹", "虛空", "星際", "冰晶", "熔岩", "極光", "電光", "幻影", "重力"];
   const adjCoins = ["黃金", "閃耀", "超速", "夜市", "暴富", "甜甜圈", "雷霆", "流星", "航海", "神秘"];
@@ -276,15 +276,33 @@ function makeExperiences() {
     };
   };
 
-  for (let i = 1; i <= 30; i++) ex.push(mk("obby", i, 0xabc000));
-  for (let i = 1; i <= 20; i++) ex.push(mk("coins", i, 0xdef000));
-  for (let i = 1; i <= 20; i++) ex.push(mk("sandbox", i, 0x123000));
-  for (let i = 1; i <= 15; i++) ex.push(mk("gunfight", i, 0x444000));
-  for (let i = 1; i <= 15; i++) ex.push(mk("forest99", i, 0x222000));
-  const list = ex.slice(0, 100);
-  // 給縮圖用的穩定編號（方便你用 1.png ~ 100.png 自己畫縮圖）
-  for (let i = 0; i < list.length; i++) list[i].thumbNo = i + 1;
-  return list;
+  const blocks = [
+    { template: "obby", n: 30, baseSeed: 0xabc000 },
+    { template: "coins", n: 20, baseSeed: 0xdef000 },
+    { template: "sandbox", n: 20, baseSeed: 0x123000 },
+    { template: "gunfight", n: 15, baseSeed: 0x444000 },
+    { template: "forest99", n: 15, baseSeed: 0x222000 },
+  ];
+  const cycleLen = blocks.reduce((a, b) => a + b.n, 0); // 100
+  const want = Math.max(1, (count | 0) || 1);
+  for (let g = 1; g <= want; g++) {
+    const cycle = ((g - 1) / cycleLen) | 0;
+    const within = (g - 1) % cycleLen; // 0..99
+    let acc = 0;
+    for (const b of blocks) {
+      if (within < acc + b.n) {
+        const local = within - acc + 1; // 1..b.n
+        const idx = local + cycle * b.n; // 讓每種模板的 #idx 持續往上（不重複）
+        ex.push(mk(b.template, idx, b.baseSeed));
+        break;
+      }
+      acc += b.n;
+    }
+  }
+  // 給前 100 個縮圖用的穩定編號（01.jpg ~ 100.jpg）
+  const maxThumb = Math.min(100, ex.length);
+  for (let i = 0; i < maxThumb; i++) ex[i].thumbNo = i + 1;
+  return ex;
 }
 
 const BLOCKS = [
@@ -563,10 +581,29 @@ async function bootstrap() {
       return arr.map((b) => b.toString(16).padStart(2, "0")).join("");
     };
 
-    // --- experiences (100) ---
-    const EXPERIENCES = makeExperiences();
-    const expById = new Map(EXPERIENCES.map((e) => [e.id, e]));
-    let activeExp = profile.experienceId ? expById.get(profile.experienceId) ?? null : null;
+    // --- experiences（無限滑動清單：需要時再生更多） ---
+    let EXPERIENCES = makeExperiences(100);
+    let expById = new Map(EXPERIENCES.map((e) => [e.id, e]));
+    const ensureExperiences = (wantCount) => {
+      const hardCap = 5000; // 避免 DOM/記憶體爆掉，但實際上已經「滑不完」
+      const want = Math.max(100, (wantCount | 0) || 0);
+      const target = Math.min(hardCap, want);
+      if (EXPERIENCES.length >= target) return;
+      EXPERIENCES = makeExperiences(target);
+      expById = new Map(EXPERIENCES.map((e) => [e.id, e]));
+    };
+    let activeExp = null;
+    if (profile.experienceId) {
+      // 若玩家上次選到比較後面的遊戲（無限清單），這裡會自動擴充清單直到找回來
+      for (let n = 100; n <= 5000; n += 100) {
+        ensureExperiences(n);
+        const hit = expById.get(profile.experienceId);
+        if (hit) {
+          activeExp = hit;
+          break;
+        }
+      }
+    }
     const expThumbCache = new Map(); // id -> dataURL
     const customThumbNoCache = new Map(); // thumbNo -> dataURL (from sheet)
     let customSheetReady = false;
@@ -5022,97 +5059,123 @@ async function bootstrap() {
       refreshExperienceUi();
     }
 
+    // Experience feed: 無限滑動（滑到底自動再加）
+    const EXP_FEED_INITIAL_MENU = 40;
+    const EXP_FEED_INITIAL_SIDE = 60;
+    const EXP_FEED_STEP = 40;
+    const EXP_FEED_MARGIN_PX = 320;
+
+    const expMetaLong = (ex) =>
+      ex.template === "obby"
+        ? "跑酷關卡（含陷阱/移動平台）"
+        : ex.template === "coins"
+          ? "限時撿金幣"
+          : ex.template === "gunfight"
+            ? "槍戰：1v1 對戰"
+            : ex.template === "forest99"
+              ? "生存：森林九十九夜"
+              : "自由建造沙盒";
+
+    const expMetaShort = (ex) =>
+      ex.template === "obby"
+        ? "跑酷關卡"
+        : ex.template === "coins"
+          ? "撿金幣"
+          : ex.template === "gunfight"
+            ? "槍戰"
+            : ex.template === "forest99"
+              ? "九十九夜"
+              : "沙盒建造";
+
+    const getExpScrollHost = (container) =>
+      container?.closest?.(".sidepanel__card") || container?.closest?.(".menu__card") || container;
+
+    const makeExperienceBtn = (ex, dense = false) => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.dataset.exid = ex.id;
+      btn.className = `exitem ${activeExp?.id === ex.id ? "active" : ""}`;
+      const tag = expTag(ex);
+      const fallback = makeExperienceThumb(ex);
+      btn.innerHTML = `
+          <div class="exitem__name">${ex.name}</div>
+          <img class="exitem__img" alt="" loading="lazy" />
+          <div class="exitem__tags"><span class="${tag.cls}">${tag.text}</span><span class="tag">Seed ${ex.params?.seed ?? "-"}</span></div>
+          <div class="exitem__meta">${dense ? expMetaShort(ex) : expMetaLong(ex)}</div>
+        `;
+      const imgEl = btn.querySelector(".exitem__img");
+      if (imgEl) {
+        const custom = getCustomExperienceThumbUrl(ex);
+        if (custom) {
+          imgEl.src = custom;
+          imgEl.addEventListener("error", () => (imgEl.src = fallback), { once: true });
+        } else {
+          imgEl.src = fallback;
+        }
+      }
+      btn.addEventListener("click", () => {
+        // 一按就進入遊戲（像 Roblox 直接點遊戲卡片）
+        setActiveExperience(ex);
+        enterGame({ load: false, lock: true });
+      });
+      return btn;
+    };
+
+    const syncActiveExperienceBtns = (container) => {
+      if (!container) return;
+      const activeId = activeExp?.id ?? "";
+      const btns = container.querySelectorAll?.(".exitem") || [];
+      for (const b of btns) b.classList.toggle("active", b.dataset.exid === activeId);
+    };
+
+    const ensureExperienceFeed = (container, { initial = 40, dense = false } = {}) => {
+      if (!container) return;
+      if (!container.__expFeed) {
+        const host = getExpScrollHost(container);
+        container.__expFeed = { rendered: 0, dense, host, onScroll: null };
+        const onScroll = () => {
+          const st = host.scrollTop || 0;
+          const ch = host.clientHeight || 0;
+          const sh = host.scrollHeight || 0;
+          if (st + ch >= sh - EXP_FEED_MARGIN_PX) {
+            const feed = container.__expFeed;
+            const want = feed.rendered + EXP_FEED_STEP;
+            ensureExperiences(want);
+            const to = Math.min(want, EXPERIENCES.length);
+            if (to <= feed.rendered) return;
+            const frag = document.createDocumentFragment();
+            for (let i = feed.rendered; i < to; i++) frag.appendChild(makeExperienceBtn(EXPERIENCES[i], feed.dense));
+            container.appendChild(frag);
+            feed.rendered = to;
+          }
+        };
+        host.addEventListener("scroll", onScroll, { passive: true });
+        container.__expFeed.onScroll = onScroll;
+      }
+      const feed = container.__expFeed;
+      if (feed.rendered <= 0) {
+        ensureExperiences(initial);
+        const to = Math.min(initial, EXPERIENCES.length);
+        const frag = document.createDocumentFragment();
+        for (let i = 0; i < to; i++) frag.appendChild(makeExperienceBtn(EXPERIENCES[i], feed.dense));
+        container.innerHTML = "";
+        container.appendChild(frag);
+        feed.rendered = to;
+      }
+      syncActiveExperienceBtns(container);
+    };
+
     function refreshExperienceUi() {
       const name = activeExp?.name ?? "未選擇";
       if (ui.expNameText) ui.expNameText.textContent = name;
       if (ui.hudExpText) ui.hudExpText.textContent = activeExp?.name ?? "-";
-      if (!ui.experienceList) return;
-      ui.experienceList.innerHTML = "";
-      for (const ex of EXPERIENCES) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = `exitem ${activeExp?.id === ex.id ? "active" : ""}`;
-        const tag = expTag(ex);
-        const fallback = makeExperienceThumb(ex);
-        btn.innerHTML = `
-          <div class="exitem__name">${ex.name}</div>
-          <img class="exitem__img" alt="" loading="lazy" />
-          <div class="exitem__tags"><span class="${tag.cls}">${tag.text}</span><span class="tag">Seed ${ex.params?.seed ?? "-"}</span></div>
-          <div class="exitem__meta">${
-            ex.template === "obby"
-              ? "跑酷關卡（含陷阱/移動平台）"
-              : ex.template === "coins"
-                ? "限時撿金幣"
-                : ex.template === "gunfight"
-                  ? "槍戰：1v1 對戰"
-                  : ex.template === "forest99"
-                    ? "生存：森林九十九夜"
-                    : "自由建造沙盒"
-          }</div>
-        `;
-        const imgEl = btn.querySelector(".exitem__img");
-        if (imgEl) {
-          const custom = getCustomExperienceThumbUrl(ex);
-          if (custom) {
-            imgEl.src = custom;
-            imgEl.addEventListener("error", () => (imgEl.src = fallback), { once: true });
-          } else {
-            imgEl.src = fallback;
-          }
-        }
-        btn.addEventListener("click", () => {
-          // 一按就進入遊戲（像 Roblox 直接點遊戲卡片）
-          setActiveExperience(ex);
-          enterGame({ load: false, lock: true });
-        });
-        ui.experienceList.appendChild(btn);
-      }
+      if (ui.experienceList) ensureExperienceFeed(ui.experienceList, { initial: EXP_FEED_INITIAL_MENU, dense: false });
     }
 
     function refreshSideHomeUi() {
       const name = activeExp?.name ?? "-";
       if (ui.panelExpName) ui.panelExpName.textContent = name;
-      if (!ui.panelExperienceList) return;
-      ui.panelExperienceList.innerHTML = "";
-      // 側欄面板：顯示完整 100 個（像你截圖那樣）
-      for (const ex of EXPERIENCES) {
-        const btn = document.createElement("button");
-        btn.type = "button";
-        btn.className = `exitem ${activeExp?.id === ex.id ? "active" : ""}`;
-        const tag = expTag(ex);
-        const fallback = makeExperienceThumb(ex);
-        btn.innerHTML = `
-          <div class="exitem__name">${ex.name}</div>
-          <img class="exitem__img" alt="" loading="lazy" />
-          <div class="exitem__tags"><span class="${tag.cls}">${tag.text}</span><span class="tag">Seed ${ex.params?.seed ?? "-"}</span></div>
-          <div class="exitem__meta">${
-            ex.template === "obby"
-              ? "跑酷關卡"
-              : ex.template === "coins"
-                ? "撿金幣"
-                : ex.template === "gunfight"
-                  ? "槍戰"
-                  : ex.template === "forest99"
-                    ? "九十九夜"
-                    : "沙盒建造"
-          }</div>
-        `;
-        const imgEl = btn.querySelector(".exitem__img");
-        if (imgEl) {
-          const custom = getCustomExperienceThumbUrl(ex);
-          if (custom) {
-            imgEl.src = custom;
-            imgEl.addEventListener("error", () => (imgEl.src = fallback), { once: true });
-          } else {
-            imgEl.src = fallback;
-          }
-        }
-        btn.addEventListener("click", () => {
-          setActiveExperience(ex);
-          enterGame({ load: false, lock: true });
-        });
-        ui.panelExperienceList.appendChild(btn);
-      }
+      if (ui.panelExperienceList) ensureExperienceFeed(ui.panelExperienceList, { initial: EXP_FEED_INITIAL_SIDE, dense: true });
     }
 
     function refreshSideStatsUi() {
