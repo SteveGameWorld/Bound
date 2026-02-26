@@ -81,6 +81,10 @@ const ui = {
   vipLoginBtn: $("vipLoginBtn"),
   vipLogoutBtn: $("vipLogoutBtn"),
   vipStatus: $("vipStatus"),
+  moreHelp: $("moreHelp"),
+  siteUrl: $("siteUrl"),
+  copySiteUrlBtn: $("copySiteUrlBtn"),
+  openSiteUrlBtn: $("openSiteUrlBtn"),
   p2pCreateBtn: $("p2pCreateBtn"),
   p2pCloseBtn: $("p2pCloseBtn"),
   p2pStatus: $("p2pStatus"),
@@ -5407,6 +5411,12 @@ async function bootstrap() {
         ui.vipStatus.textContent = vip.ok ? "VIP：已登入（商店免費）" : "VIP：未登入";
       }
       if (ui.vipLogoutBtn) ui.vipLogoutBtn.classList.toggle("hidden", !vip.ok);
+
+      if (ui.siteUrl) {
+        const u = new URL(location.href);
+        u.hash = "";
+        ui.siteUrl.value = u.toString();
+      }
     }
 
     function refreshSideAvatarUi() {
@@ -5880,6 +5890,31 @@ async function bootstrap() {
     ui.panelToMenu?.addEventListener("click", () => {
       closeSidePanel();
       exitToMenu();
+      sfx.play("click");
+    });
+
+    ui.copySiteUrlBtn?.addEventListener("click", async () => {
+      const txt = String(ui.siteUrl?.value || "").trim();
+      if (!txt) return;
+      try {
+        await navigator.clipboard?.writeText?.(txt);
+        ui.hintText.textContent = "已複製網址";
+        setTimeout(() => (ui.hintText.textContent = "-"), 800);
+      } catch {
+        ui.siteUrl?.focus?.();
+        ui.siteUrl?.select?.();
+      }
+      sfx.play("click");
+    });
+
+    ui.openSiteUrlBtn?.addEventListener("click", () => {
+      const txt = String(ui.siteUrl?.value || "").trim();
+      if (!txt) return;
+      try {
+        window.open(txt, "_blank", "noopener,noreferrer");
+      } catch {
+        location.href = txt;
+      }
       sfx.play("click");
     });
 
