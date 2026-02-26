@@ -110,6 +110,7 @@ function setBootMsg(t) {
 
 async function loadThree() {
   const urls = [
+    "./vendor/three.module.js",
     "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
     "https://unpkg.com/three@0.164.1/build/three.module.js",
     "https://esm.sh/three@0.164.1",
@@ -3340,7 +3341,25 @@ async function bootstrap() {
         } else if (item.kind === "hat") {
           ctx.fillStyle = "rgba(110,231,255,0.22)";
           ctx.beginPath();
-          ctx.roundRect(70, 88, 220, 90, 18);
+          if (typeof ctx.roundRect === "function") {
+            ctx.roundRect(70, 88, 220, 90, 18);
+          } else {
+            const x = 70;
+            const y = 88;
+            const w = 220;
+            const h = 90;
+            const r = 18;
+            const rr = Math.min(r, w / 2, h / 2);
+            ctx.moveTo(x + rr, y);
+            ctx.lineTo(x + w - rr, y);
+            ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+            ctx.lineTo(x + w, y + h - rr);
+            ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+            ctx.lineTo(x + rr, y + h);
+            ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+            ctx.lineTo(x, y + rr);
+            ctx.quadraticCurveTo(x, y, x + rr, y);
+          }
           ctx.fill();
           ctx.fillStyle = "rgba(0,0,0,0.30)";
           ctx.fillRect(90, 120, 180, 20);
@@ -5912,11 +5931,8 @@ async function bootstrap() {
     ui.openSiteUrlBtn?.addEventListener("click", () => {
       const txt = String(ui.siteUrl?.value || "").trim();
       if (!txt) return;
-      try {
-        window.open(txt, "_blank", "noopener,noreferrer");
-      } catch {
-        location.href = txt;
-      }
+      // 手機/電腦常擋彈窗：直接用同分頁跳轉最穩
+      location.href = txt;
       sfx.play("click");
     });
 
