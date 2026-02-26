@@ -5413,8 +5413,10 @@ async function bootstrap() {
       if (ui.vipLogoutBtn) ui.vipLogoutBtn.classList.toggle("hidden", !vip.ok);
 
       if (ui.siteUrl) {
-        const u = new URL(location.href);
+        // 王紙是獨立頁：/paper/
+        const u = new URL("paper/", location.href);
         u.hash = "";
+        u.search = "";
         ui.siteUrl.value = u.toString();
       }
     }

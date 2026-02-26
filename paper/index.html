@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>BOUND 王紙</title>
+    <link rel="icon" href="data:," />
+    <style>
+      :root {
+        --bg: #0b1020;
+        --bg2: #0f1733;
+        --fg: #e6e9f5;
+        --muted: #aab2d5;
+        --border: rgba(255, 255, 255, 0.12);
+        --shadow: 0 18px 70px rgba(0, 0, 0, 0.55);
+        --radius: 16px;
+        --font: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial, "PingFang TC", "Noto Sans TC", sans-serif;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        padding: 0;
+        background: radial-gradient(1200px 600px at 30% 20%, var(--bg2), var(--bg));
+        color: var(--fg);
+        font-family: var(--font);
+      }
+      a {
+        color: inherit;
+        text-decoration: none;
+      }
+      .wrap {
+        min-height: 100vh;
+        padding: 22px;
+        display: grid;
+        place-items: center;
+      }
+      .card {
+        width: min(980px, 100%);
+        border-radius: var(--radius);
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.06);
+        backdrop-filter: blur(12px);
+        box-shadow: var(--shadow);
+        padding: 18px;
+      }
+      .top {
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+      }
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .logo {
+        width: 44px;
+        height: 44px;
+        border-radius: 14px;
+        border: 1px solid rgba(110, 231, 255, 0.28);
+        background: rgba(110, 231, 255, 0.10);
+        box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+        display: grid;
+        place-items: center;
+        font-weight: 1000;
+        letter-spacing: 0.02em;
+      }
+      h1 {
+        margin: 0;
+        font-size: 22px;
+        font-weight: 1000;
+        letter-spacing: 0.02em;
+      }
+      .sub {
+        margin-top: 4px;
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      .btns {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .btn {
+        cursor: pointer;
+        padding: 10px 12px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        background: rgba(255, 255, 255, 0.08);
+        color: var(--fg);
+        font-weight: 900;
+        letter-spacing: 0.02em;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.22);
+      }
+      .btn:hover {
+        background: rgba(255, 255, 255, 0.12);
+      }
+      .btn--primary {
+        background: rgba(110, 231, 255, 0.16);
+        border: 1px solid rgba(110, 231, 255, 0.36);
+      }
+      .grid {
+        margin-top: 14px;
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 12px;
+      }
+      @media (max-width: 860px) {
+        .grid {
+          grid-template-columns: 1fr;
+        }
+      }
+      .panel {
+        border-radius: 16px;
+        border: 1px solid rgba(255, 255, 255, 0.10);
+        background: rgba(0, 0, 0, 0.12);
+        padding: 14px;
+      }
+      .title {
+        font-weight: 1000;
+        letter-spacing: 0.02em;
+        margin-bottom: 8px;
+      }
+      .list {
+        margin: 0;
+        padding-left: 18px;
+        color: rgba(230, 233, 245, 0.92);
+        font-size: 13px;
+        line-height: 1.6;
+      }
+      .row {
+        margin-top: 10px;
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        align-items: center;
+      }
+      .input {
+        flex: 1;
+        min-width: 240px;
+        padding: 10px 12px;
+        border-radius: 999px;
+        border: 1px solid rgba(255, 255, 255, 0.12);
+        background: rgba(255, 255, 255, 0.06);
+        color: rgba(230, 233, 245, 0.95);
+        outline: none;
+      }
+      .hint {
+        margin-top: 10px;
+        color: rgba(170, 178, 213, 0.95);
+        font-size: 12px;
+      }
+      .foot {
+        margin-top: 12px;
+        color: rgba(170, 178, 213, 0.85);
+        font-size: 12px;
+        display: flex;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 10px;
+      }
+      .mono {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card" role="main">
+        <div class="top">
+          <div class="brand">
+            <div class="logo">B</div>
+            <div>
+              <h1>BOUND 王紙</h1>
+              <div class="sub">這是一個獨立網站頁（像 Roblox 的更多 → 王紙）。你可以從這裡進遊戲、分享連結、看玩法說明。</div>
+            </div>
+          </div>
+          <div class="btns">
+            <a id="playBtn" class="btn btn--primary" href="../">進入遊戲</a>
+            <button id="copyBtn" class="btn" type="button">複製王紙連結</button>
+          </div>
+        </div>
+
+        <div class="grid">
+          <div class="panel">
+            <div class="title">玩法摘要</div>
+            <ul class="list">
+              <li><b>平板</b>：左下搖桿移動、右側滑動轉視角、右下按鈕（跳/攻/放/M）。</li>
+              <li><b>槍戰</b>：1v1 回合制。</li>
+              <li><b>九十九夜</b>：白天怪物不攻擊；晚上才會追你；銀火結界內安全。</li>
+              <li><b>連線</b>：遊戲內「隊伍」→ P2P，照 Offer/Answer 流程貼上即可。</li>
+              <li><b>VIP</b>：登入後商店免費（本機記錄）。</li>
+            </ul>
+            <div class="hint">提示：如果你把這個連結丟給朋友，他開啟後也能直接按「進入遊戲」。</div>
+          </div>
+
+          <div class="panel">
+            <div class="title">王紙連結</div>
+            <div class="sub">分享這個網址（這頁就是王紙）。</div>
+            <div class="row">
+              <input id="url" class="input mono" type="text" readonly />
+              <button id="copyBtn2" class="btn" type="button">複製</button>
+            </div>
+            <div class="row">
+              <a id="openGameBtn" class="btn btn--primary" href="../">開啟遊戲</a>
+              <a class="btn" href="../#about">回遊戲（若支援）</a>
+            </div>
+            <div id="copied" class="hint" style="display:none">已複製。</div>
+          </div>
+        </div>
+
+        <div class="foot">
+          <div>BOUND / 王紙</div>
+          <div class="mono" id="ver">-</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const urlEl = document.getElementById("url");
+      const copied = document.getElementById("copied");
+      const ver = document.getElementById("ver");
+
+      const u = new URL(location.href);
+      u.hash = "";
+      u.search = "";
+      urlEl.value = u.toString();
+      ver.textContent = `build-paper-${new Date().toISOString().slice(0, 10)}`;
+
+      async function copyUrl() {
+        const txt = urlEl.value;
+        try {
+          await navigator.clipboard.writeText(txt);
+          copied.style.display = "block";
+          setTimeout(() => (copied.style.display = "none"), 900);
+        } catch {
+          urlEl.focus();
+          urlEl.select();
+        }
+      }
+
+      document.getElementById("copyBtn")?.addEventListener("click", copyUrl);
+      document.getElementById("copyBtn2")?.addEventListener("click", copyUrl);
+    </script>
+  </body>
+</html>
+
