@@ -681,7 +681,7 @@ canvas {
   position: fixed;
   inset: 0;
   pointer-events: none;
-  z-index: 13; /* above canvas, below sidepanel */
+  z-index: 9; /* above canvas, below HUD buttons */
   display: none;
 }
 @media (hover: none) and (pointer: coarse) {
@@ -697,6 +697,7 @@ canvas {
   height: 132px;
   pointer-events: auto;
   touch-action: none;
+  z-index: 2;
 }
 .joy {
   position: absolute;
@@ -723,11 +724,13 @@ canvas {
 .touch__look {
   position: fixed;
   right: 0;
-  top: 0;
+  top: 74px; /* keep HUD buttons clickable */
   width: 52vw;
-  height: 100vh;
+  height: auto;
+  bottom: 160px; /* keep touch buttons clickable */
   pointer-events: auto;
   touch-action: none;
+  z-index: 1;
 }
 .touch__btns {
   position: fixed;
@@ -738,6 +741,7 @@ canvas {
   gap: 10px;
   pointer-events: auto;
   touch-action: none;
+  z-index: 3;
 }
 .touchbtn {
   width: 64px;
